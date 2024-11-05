@@ -1,0 +1,46 @@
+{
+    "cart": [
+        {
+            "id": "D",
+            "amount": 1
+        }
+    ],
+    "users": [
+        {
+            "name": "Uncle_Bob_1337",
+            "password": "$2a$10$WFmBGMzwfrQv9//UnFOI/OGAmZIE9t0nmY1Nx8QQKgP4YIhYVa53i",
+            "admin": true,
+            "token": "0dc29b0680d0709d19bf833d502c2849650e5437"
+        }
+    ],
+    "books": [
+        {
+            "id": "A",
+            "title": "Fellowship of the book",
+            "cost": 5,
+            "inventory": 40,
+            "limited": false
+        },
+        {
+            "id": "B",
+            "title": "Books and the chamber of books",
+            "cost": 10,
+            "inventory": 10,
+            "limited": false
+        },
+        {
+            "id": "C",
+            "title": "The Return of the Book",
+            "cost": 15,
+            "inventory": 9,
+            "limited": false
+        },
+        {
+            "id": "D",
+            "title": "Fellowship of the book",
+            "cost": 75,
+            "inventory": 9,
+            "limited": true
+        }
+    ]
+}
