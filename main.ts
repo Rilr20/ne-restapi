@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import * as fs from 'fs'
 import { randomBytes } from 'crypto';
 import { checkValidQuery, checkValidQueryNegative, cartValue, cleanCart, updateInventory, checkIfInventoryIsZero, findUserToken, findUsersPassword, verifyPassword, } from './helper'
-import { initialise, removeFromCart } from './database'
+import { initialise, removeFromCart, addToCart } from './database'
 
 
 
@@ -58,43 +58,17 @@ app.post("/remove", async (req, res) => {
     }
 })
 /* Add book to cart */
-app.post("/add", (req, res) => {
-    const id = req.body.id
+app.post("/add", async (req, res) => {
+    const itemId = req.body.id
     let amount = req.body.amount
     amount = Number(amount)
 
-    if (Number.isNaN(amount) || amount <= 0) {
+    if (!Number.isNaN(amount) && amount > 0) {
+        let success = await addToCart(itemId, amount)
 
-        res.status(400).json({ "message": "Amount is not a number or 0 and less" })
+        success ? res.status(201).json({ message: `Cart added ${amount} of book id ${itemId}` }) : res.status(400).json({ message: `Request is not valid` })
     } else {
-
-        const isValid = checkValidQuery(id, amount)
-        /* Check if id exists */
-        /* Check if amount is there */
-        if (isValid) {
-
-            // add to cart
-            // save to json
-            let foundId = false
-            const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-            data.cart.forEach((item: { id: number; amount: number; }) => {
-                if (item.id === id) {
-                    item.amount += amount
-                    foundId = true
-                }
-            });
-            if (!foundId) {
-                data.cart.push({ id: id, amount: amount })
-            }
-
-
-            fs.writeFileSync('data.json', JSON.stringify(data, null, 4));
-
-            // data.cart = 
-            res.status(201).json({ message: `Cart updated with: ${id}, ${amount}` })
-        } else {
-            res.status(400).json({ message: "Invalid id or amount is larger than inventory" })
-        }
+        res.status(400).json({ "message": "Amount is not a number or 0 and less" })
     }
 })
 /* Check Cart */

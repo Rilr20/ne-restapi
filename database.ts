@@ -1,8 +1,9 @@
 import sqlite3 from 'better-sqlite3';
 
+const db = new sqlite3("./db/db.db")
+
 export async function initialise(): Promise<boolean> {
     try {
-        const db = new sqlite3("./db/db.db")
         // Create CartToUser table
         // await db.run(`
         //     CREATE TABLE IF NOT EXISTS "CartToUser" (
@@ -93,7 +94,6 @@ export async function initialise(): Promise<boolean> {
     }
 }
 export async function removeFromCart(itemId: number, amount: number) {
-    const db = new sqlite3("./db/db.db")
     console.log(itemId);
     console.log(amount);
     
@@ -107,5 +107,38 @@ export async function removeFromCart(itemId: number, amount: number) {
         return true
     } 
     return false
-    console.log(row.amount);    
+}
+
+export async function addToCart(itemId:number, amount: number) {
+    let stock = await getInventoryOfId(itemId)
+
+    const stmt = db.prepare(`SELECT inventory FROM Books WHERE id = ?;`)
+    let row: any = stmt.get(itemId);
+    let inStock = row.inventory
+
+    const stmtCart = db.prepare(`SELECT amount FROM Cart WHERE id = ?;`)
+    let rowCart: any = stmtCart.get(itemId);
+
+    const totalInCart = rowCart ? amount + rowCart.amount : amount; 
+    
+
+    console.log(inStock >= totalInCart);
+    
+    if (inStock >= totalInCart) {
+        
+        const query = rowCart ? `UPDATE Cart SET amount = amount + ? WHERE item_id = ?` : `INSERT INTO Cart (amount, item_id) VALUES(?,?)`;
+        console.log(query);
+        console.log(amount);
+        
+
+        const insertstmt = db.prepare(query)
+        insertstmt.run([amount, itemId])
+        return true
+    }
+    return false
+}
+
+async function getInventoryOfId(itemId:number): Promise<number> {
+
+    return 0
 }
