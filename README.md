@@ -20,7 +20,7 @@ routes that the customer has access to.
 Remove an item from the cart.
 
 ## Request Body
-- `id`: string (required) - Id of the book.
+- `id`: number (required) - Id of the book.
 - `amount`: Integer (required) - Number to be removed to cart.
 
 ## POST /add
@@ -28,7 +28,7 @@ Remove an item from the cart.
 Adds an item from the cart.
 
 ### Request Body
-- `id`: string (required) - Id of the book.
+- `id`: number (required) - Id of the book.
 - `amount`: Integer (required) - Number to be added to cart.
 
 ## GET /cart
