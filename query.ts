@@ -61,8 +61,17 @@ async function getCartValue() {
 }
 
 export async function login(username: string, password: string): Promise<[boolean, string]> {
+    if (username == undefined || password == undefined) {
+        return [false, ""]
+    }
+
+
     const stmt = db.prepare(`SELECT * FROM Users WHERE username = ?;`)
     let row: any = stmt.get(username);
+
+    if (row == undefined) {
+        return [false, ""]
+    }
 
     const result = await verifyPassword(row.password, password)
 
@@ -75,6 +84,28 @@ export async function login(username: string, password: string): Promise<[boolea
     }
 
     return [false, ""]
+}
+
+export async function addToInventory(id: number, amount: number) {
+    const book = await getBookById(id)
+    // console.log(book);
+
+    if (Boolean(book.limited)) {
+        console.log("i am here ;)");
+        
+        return false
+    }
+    const query = db.prepare(`UPDATE Books SET inventory=? WHERE id = ?`)
+    const stockAmount = amount * 10
+    query.run([stockAmount, id])
+    return true
+}
+
+export async function checkInventory() {
+    const stmt = db.prepare(`SELECT * FROM Books`)
+    let rows: any[] = stmt.all()
+
+    return rows
 }
 
 async function getInventoryById(itemId: number): Promise<number> {
@@ -90,9 +121,26 @@ async function getCartById(itemId: number): Promise<number> {
     return row ? row.amount : 0
 }
 
+async function getBookById(itemId: number): Promise<{ id: number, title: string, cost: number, inventory: number, limited: number }> {
+    const stmtCart = db.prepare(`SELECT * FROM Books WHERE id = ?;`)
+    let row: any = stmtCart.get(itemId);
+
+    return row
+}
+
 async function addTokenToId(userId: number): Promise<string> {
     const token = randomBytes(20).toString('hex')
     const query = `UPDATE Users SET token = ? WHERE id = ?`;
     db.prepare(query).run([token, userId])
     return token
+}
+export async function checkToken(username: string, token: string | string[] | undefined): Promise<boolean> {
+    const stmt = db.prepare(`SELECT token FROM Users WHERE username = ?;`)
+    let row: any = stmt.get(username);
+
+    if (row == undefined) {
+        return false
+    }
+
+    return row.token == token ? true : false
 }
