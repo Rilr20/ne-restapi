@@ -1,4 +1,6 @@
 import sqlite3 from 'better-sqlite3';
+import { verifyPassword } from './helper'
+
 
 const db = new sqlite3("./db/db.db")
 
@@ -116,7 +118,7 @@ export async function addToCart(itemId: number, amount: number) {
     let inCart = await getCartById(itemId)
 
     const totalInCart = amount + inCart;
-    
+
     if (inStock >= totalInCart) {
         const query = inCart == 0 ? `INSERT INTO Cart (amount, item_id) VALUES(?,?)` : `UPDATE Cart SET amount = amount + ? WHERE item_id = ?`;
         const insertstmt = db.prepare(query)
@@ -127,12 +129,27 @@ export async function addToCart(itemId: number, amount: number) {
     return false
 }
 
+export async function checkout():Promise<boolean> {
+    const totalValue = await getCartValue()
+    
+    if (totalValue <= 120) {
+        const query = `DELETE FROM Cart;`
+        db.prepare(query).run()
+
+        return true
+    }
+    return false
+}
+
 async function getCartValue() {
     const stmt = db.prepare(`SELECT b.cost, c.item_id, c.amount from Cart c JOIN Books b ON b.id = c.item_id;`)
-    let row =  stmt.get()
-    console.log(row);
+    let rows: any[] = stmt.all()
+    let sum = 0
+    rows.forEach((item: {cost: number, amount:number}) => {
+        sum += item.cost * item.amount 
+    })
     
-    return 0
+    return sum
 }
 
 async function getInventoryById(itemId: number): Promise<number> {
