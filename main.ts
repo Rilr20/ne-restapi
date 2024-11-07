@@ -1,9 +1,9 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import * as fs from 'fs'
-import { checkValidQuery, checkValidQueryNegative, cartValue, cleanCart, updateInventory, checkIfInventoryIsZero, findUserToken, findUsersPassword, verifyPassword, } from './helper'
+import { cartValue, checkIfInventoryIsZero, } from './helper'
 import { initialise } from './database'
-import { removeFromCart, addToCart, checkout, login } from './query'
+import { removeFromCart, addToCart, checkout, login, addToInventory, checkToken, checkInventory } from './query'
 
 
 
@@ -93,54 +93,35 @@ app.post("/login", async (req, res) => {
 
     const response = await login(username, password)
     if (response[0]) {
-            res.status(200).json({ token: response[1] })
+        res.status(200).json({ token: response[1] })
 
     } else {
 
         res.status(400).json({ message: "invalid credidentials" })
     }
-
 })
 
 /* Restock book */
 app.post("/admin/add", async (req, res) => {
-    const username = req.body.username
+    const username: string = req.body.username
     const token = req.headers.token
 
     const id = req.body.id
     const amount = req.body.amount
 
-    if (amount <= 0) {
-        res.status(400).json({ message: "Amount is zero or less" })
+    if (!Number.isNaN(amount) && amount > 0) {
 
-    } else {
-
-
-        const userToken = await findUserToken(username)
-
-        if (token !== "" && token == userToken) {
-            const bookAmount = amount * 10
-
-            const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-            const book = data.books.find((book: { id: string; }) => book.id === id);
-            if (book) {
-
-                if (book.limited == true) {
-                    res.status(400).json({ message: "Book is of a limited print no more can be added" })
-                } else {
-
-                    book.inventory = book.inventory + bookAmount
-                    fs.writeFileSync('data.json', JSON.stringify(data, null, 4));
-                    res.status(201).json({ message: `success! book '${id}' stock updated with ${bookAmount} books`, book: book })
-                }
-            } else {
-                res.status(400).json({ message: "Book not found" })
-
-            }
+        const tokenCheck = await checkToken(username, token)
+        if (!tokenCheck) {
+            res.status(400).json({ message: "invalid token" })
 
         } else {
-            res.status(400).json({ message: "invalid token" })
+            const result = await addToInventory(id, amount)
+            result ? res.status(201).json({ message: `success! book '${id}' stock updated with ${amount * 10} books` }) : res.status(400).json({ message: "Invalid request" })
+
         }
+    } else {
+        res.status(400).json({ "message": "Amount is not a number or 0 and less" })
     }
 })
 
@@ -149,26 +130,15 @@ app.post("/admin/check", async (req, res) => {
     const username = req.body.username
     const token = req.headers.token
 
+    const tokenCheck = await checkToken(username, token)
+    if (tokenCheck) {
+        const books: any = await checkInventory()
+        const filteredBooks = books.map((book: { id: number, inventory: number, }) => ({ id: book.id, inventory: book.inventory }))
+        const notInstock = checkIfInventoryIsZero(books)
 
-    const userToken = await findUserToken(username)
+        res.status(200).json({ books: `These books are not in stock ids: ${notInstock}!`, data: filteredBooks, })
 
-    if (token !== "" && token == userToken) {
-        const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-        const filteredBooks = data.books.map((book: { id: string, inventory: number, }) => ({ id: book.id, inventory: book.inventory }))
-
-
-
-        const books = checkIfInventoryIsZero()
-
-        if (books.length > 0) {
-            res.status(200).json({ books: `These books are not in stock ids: ${books}!`, data: filteredBooks, })
-
-        } else {
-
-            res.status(200).json({ data: filteredBooks })
-        }
     } else {
-
         res.status(400).json({ message: "invalid token" })
     }
 })
