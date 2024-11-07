@@ -1,9 +1,9 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import * as fs from 'fs'
-import { randomBytes } from 'crypto';
 import { checkValidQuery, checkValidQueryNegative, cartValue, cleanCart, updateInventory, checkIfInventoryIsZero, findUserToken, findUsersPassword, verifyPassword, } from './helper'
-import { initialise, removeFromCart, addToCart } from './database'
+import { initialise } from './database'
+import { removeFromCart, addToCart, checkout, login } from './query'
 
 
 
@@ -79,44 +79,27 @@ app.get("/cart", (req, res) => {
 })
 
 /* Check out cart */
-app.post("/checkout", (req, res) => {
+app.post("/checkout", async (req, res) => {
+    const success = await checkout()
 
-    const value = cartValue()
-    if (value >= 120) {
-
-        res.status(400).json({ message: "Cart value is too large, Reduce to below $120" })
-    } else {
-
-        /* Update Inventory */
-        updateInventory()
-        /* Remove Everything from Cart */
-        cleanCart()
-
-        res.status(200).json({ "message": `Checked out final price was $${value}` })
-    }
+    success ? res.status(200).json({ "message": `Cart was Checked out` }) : res.status(400).json({ message: "Cart value is too large, Reduce to below $120" })
 })
 
 /* ADMIN ROUTES */
 /* Login */
-app.post("/admin/login", async (req, res) => {
+app.post("/login", async (req, res) => {
     const username = req.body.username
     const password = req.body.password
-    const allowed = await verifyPassword(username, password)
-    if (allowed) {
-        let token = randomBytes(20).toString('hex')
 
-        const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-        const user = data.users.find((user: { name: string; }) => user.name === username);
+    const response = await login(username, password)
+    if (response[0]) {
+            res.status(200).json({ token: response[1] })
 
-        /**write to json file */
-        user.token = token
-        fs.writeFileSync('data.json', JSON.stringify(data, null, 4));
-
-
-        res.status(200).json({ token: token })
     } else {
+
         res.status(400).json({ message: "invalid credidentials" })
     }
+
 })
 
 /* Restock book */
