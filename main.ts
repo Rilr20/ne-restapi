@@ -2,13 +2,25 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import * as fs from 'fs'
 import { randomBytes } from 'crypto';
-import { checkValidQuery, checkValidQueryNegative, cartValue, cleanCart, updateInventory, checkIfInventoryIsZero, findUserToken,  findUsersPassword, verifyPassword, } from './helper'
+import { checkValidQuery, checkValidQueryNegative, cartValue, cleanCart, updateInventory, checkIfInventoryIsZero, findUserToken, findUsersPassword, verifyPassword, } from './helper'
+import { initialise, removeFromCart } from './database'
+
 
 
 const router = express.Router()
-
 const port = process.env.port || 1337;
 const app = express();
+
+app.get("/init", async (req, res) => {
+    const status = await initialise()
+    console.log(status);
+
+    if (status) {
+        res.status(200).json({ message: "success" })
+    } else {
+        res.status(400).json({ message: "something went wrong" })
+    }
+})
 
 app.get("/", (req, res) => {
     console.log("Hello World!")
@@ -30,41 +42,19 @@ app.listen(port, () => {
 
 })
 
-
-
 /* CUSTOMER ROUTES */
 /* Remove book from cart */
-app.post("/remove", (req, res) => {
-    const id = req.body.id
+app.post("/remove", async (req, res) => {
+    const itemId = req.body.id
     let amount = req.body.amount
     amount = Number(amount)
 
-    if (Number.isNaN(amount) || amount <= 0) {
+    if (!Number.isNaN(amount) && amount > 0) {
+        let success = await removeFromCart(itemId, amount)
 
-        res.status(400).json({ "message": "Amount is not a number or 0 and less" })
+        success ? res.status(201).json({ message: `Cart removed ${amount} of book id ${itemId}` }) : res.status(400).json({ message: `Request is not valid` })
     } else {
-        const isValid = checkValidQueryNegative(id, amount)
-        if (isValid) {
-            let foundId = false
-            const data = JSON.parse(fs.readFileSync('data.json', 'utf-8'));
-            data.cart.forEach((item: { amount: number, id: number }) => {
-                if (item.id === id) {
-                    item.amount -= amount
-                    foundId = true
-                }
-            });
-            if (!foundId) {
-                data.cart.push({ id: id, amount: amount })
-            }
-
-
-            fs.writeFileSync('data.json', JSON.stringify(data, null, 4));
-            const totalValue = cartValue()
-            // data.cart = 
-            res.status(201).json({ message: `Cart removed ${amount} of book id ${id} New cart value is: ${totalValue}` })
-        }
-        res.status(200).json({ message: "Invalid id or amount is larger than cart amount" })
-
+        res.status(400).json({ message: "Invalid id or amount is larger than cart amount" })
     }
 })
 /* Add book to cart */
