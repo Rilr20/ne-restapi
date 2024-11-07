@@ -54,7 +54,7 @@ export async function initialise(): Promise<boolean> {
         const insertUsers = db.prepare('INSERT INTO Users (username, password, admin, token) VALUES (@username, @password,@admin,@token);')
 
         const userData = db.transaction((users) => {
-            for (const user of users) insertUsers.run(user) 
+            for (const user of users) insertUsers.run(user)
         })
 
         userData([{
@@ -65,7 +65,7 @@ export async function initialise(): Promise<boolean> {
         }])
 
         const insertBooks = db.prepare('INSERT INTO Books (title, cost, inventory, limited) VALUES (@title, @cost, @inventory, @limited)')
-        
+
         const booksData = db.transaction((books) => {
             for (const book of books) insertBooks.run(book)
         })
@@ -86,59 +86,64 @@ export async function initialise(): Promise<boolean> {
         cartData([{ item_id: 1, amount: 2 }])
 
         console.log("Tables Initialized");
-        
+
         return true
     } catch (err) {
         console.error(err);
         return false
     }
 }
+
 export async function removeFromCart(itemId: number, amount: number) {
     console.log(itemId);
     console.log(amount);
-    
+
     const stmt = db.prepare(`SELECT amount FROM Cart WHERE item_id = ?;`);
-    let row:any = stmt.get(itemId);
+    let row: any = stmt.get(itemId);
 
     if (row.amount >= amount) {
         const query = db.prepare(`UPDATE Cart SET amount=? WHERE item_id = ?`)
         let newAmount = row.amount - amount
         query.run([newAmount, itemId])
         return true
-    } 
+    }
     return false
 }
 
-export async function addToCart(itemId:number, amount: number) {
-    let stock = await getInventoryOfId(itemId)
+export async function addToCart(itemId: number, amount: number) {
+    let inStock = await getInventoryById(itemId)
 
-    const stmt = db.prepare(`SELECT inventory FROM Books WHERE id = ?;`)
-    let row: any = stmt.get(itemId);
-    let inStock = row.inventory
+    let inCart = await getCartById(itemId)
 
-    const stmtCart = db.prepare(`SELECT amount FROM Cart WHERE id = ?;`)
-    let rowCart: any = stmtCart.get(itemId);
-
-    const totalInCart = rowCart ? amount + rowCart.amount : amount; 
-    
-
-    console.log(inStock >= totalInCart);
+    const totalInCart = amount + inCart;
     
     if (inStock >= totalInCart) {
-        
-        const query = rowCart ? `UPDATE Cart SET amount = amount + ? WHERE item_id = ?` : `INSERT INTO Cart (amount, item_id) VALUES(?,?)`;
-        console.log(query);
-        console.log(amount);
-        
-
+        const query = inCart == 0 ? `INSERT INTO Cart (amount, item_id) VALUES(?,?)` : `UPDATE Cart SET amount = amount + ? WHERE item_id = ?`;
         const insertstmt = db.prepare(query)
         insertstmt.run([amount, itemId])
+
         return true
     }
     return false
 }
 
-async function getInventoryOfId(itemId:number): Promise<number> {
-
+async function getCartValue() {
+    const stmt = db.prepare(`SELECT b.cost, c.item_id, c.amount from Cart c JOIN Books b ON b.id = c.item_id;`)
+    let row =  stmt.get()
+    console.log(row);
+    
     return 0
+}
+
+async function getInventoryById(itemId: number): Promise<number> {
+    const stmt = db.prepare(`SELECT inventory FROM Books WHERE id = ?;`)
+    let row: any = stmt.get(itemId);
+
+    return row ? row.inventory : 0
+}
+async function getCartById(itemId: number): Promise<number> {
+    const stmtCart = db.prepare(`SELECT amount FROM Cart WHERE id = ?;`)
+    let row: any = stmtCart.get(itemId);
+
+    return row ? row.amount : 0
 }
